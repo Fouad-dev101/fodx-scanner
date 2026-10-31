@@ -29,11 +29,7 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const handleScan = () => {
-    // Stage 2 will replace this with router.push('/(scanner)')
-    Alert.alert(
-      'Scanner coming in Stage 2',
-      'The real camera workflow (edge detection, cropping, filters, multi-page) is implemented in the next stage.',
-    );
+    router.push('/scanner');
   };
 
   return (
