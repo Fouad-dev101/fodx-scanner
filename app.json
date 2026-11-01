@@ -34,16 +34,20 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow FODX Scanner to access your camera to scan documents.",
-          "microphonePermission": "Allow FODX Scanner to access your microphone.",
-          "recordAudioAndroid": false
+          "cameraPermission": "Allow FODX Scanner to access your camera to scan documents."
         }
       ],
-      "expo-font",
-      "expo-splash-screen",
-      "expo-status-bar",
-      "expo-web-browser",
-      "expo-sharing"
+      "react-native-document-scanner-plugin",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
