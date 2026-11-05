@@ -1,169 +1,112 @@
-// src/app/(tabs)/tools.tsx
-
-import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer } from '../../components/ui/ScreenContainer';
-import { RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
-import { useTheme } from '../../hooks/useTheme';
-
-type Tool = {
-  id: string;
-  title: string;
-  description: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  stage: string;
-};
-
-const TOOLS: Tool[] = [
-  {
-    id: 'images-to-pdf',
-    title: 'Images to PDF',
-    description: 'Turn photos into a clean PDF document.',
-    icon: 'images-outline',
-    stage: 'Stage 3',
-  },
-  {
-    id: 'merge-pdf',
-    title: 'Merge PDF',
-    description: 'Combine several PDFs into one file.',
-    icon: 'git-merge-outline',
-    stage: 'Stage 5',
-  },
-  {
-    id: 'split-pdf',
-    title: 'Split PDF',
-    description: 'Extract page ranges into new PDFs.',
-    icon: 'cut-outline',
-    stage: 'Stage 5',
-  },
-  {
-    id: 'rotate-pdf',
-    title: 'Rotate PDF',
-    description: 'Fix page orientation permanently.',
-    icon: 'refresh-outline',
-    stage: 'Stage 5',
-  },
-  {
-    id: 'delete-pages',
-    title: 'Delete PDF pages',
-    description: 'Remove unwanted pages from a PDF.',
-    icon: 'trash-outline',
-    stage: 'Stage 5',
-  },
-  {
-    id: 'compress-pdf',
-    title: 'Compress PDF',
-    description: 'Reduce file size while keeping readability.',
-    icon: 'archive-outline',
-    stage: 'Stage 5',
-  },
-  {
-    id: 'ocr',
-    title: 'Extract text (OCR)',
-    description: 'Recognise French, English and Arabic text.',
-    icon: 'text-outline',
-    stage: 'Stage 6',
-  },
-];
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { AppText } from '@/components/ui/AppText';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { Screen } from '@/components/ui/Screen';
+import { importPdf, imagesToPdf } from '@/features/documents/importActions';
+import { useTheme } from '@/theme/ThemeProvider';
+import { radius, spacing } from '@/theme/tokens';
+import { defaultScanDate } from '@/utils/format';
 
 export default function ToolsScreen() {
   const { colors } = useTheme();
-
-  const handleToolPress = (tool: Tool) => {
-    Alert.alert(
-      `${tool.title} — ${tool.stage}`,
-      'This tool is implemented in a later stage. The button is wired and ready; the PDF/OCR engine will be connected next.',
-    );
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
+  const open = (id: string | null) => {
+    if (id) router.push(`/document/${id}`);
   };
 
-  return (
-    <ScreenContainer>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>Tools</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Essential PDF and document utilities. No internet required.
-      </Text>
+  const available: { icon: IconName; title: string; body: string; onPress: () => void }[] = [
+    {
+      icon: 'layers',
+      title: t('tools.imagesToPdf'),
+      body: t('tools.imagesToPdfBody'),
+      onPress: async () => open(await imagesToPdf(t, t('scan.defaultName', { date: defaultScanDate(i18n.language) }))),
+    },
+    {
+      icon: 'file-plus',
+      title: t('tools.importPdf'),
+      body: t('tools.importPdfBody'),
+      onPress: async () => open(await importPdf(t)),
+    },
+  ];
+  const upcoming: { icon: IconName; title: string }[] = [
+    { icon: 'git-merge', title: t('tools.merge') },
+    { icon: 'scissors', title: t('tools.split') },
+    { icon: 'minimize-2', title: t('tools.compress') },
+    { icon: 'rotate-cw', title: t('tools.rotate') },
+    { icon: 'move', title: t('tools.reorder') },
+    { icon: 'copy', title: t('tools.extractPages') },
+    { icon: 'type', title: t('tools.extractText') },
+  ];
 
-      <View style={styles.grid}>
-        {TOOLS.map((tool) => (
-          <TouchableOpacity
-            key={tool.id}
-            onPress={() => handleToolPress(tool)}
-            style={[
-              styles.toolCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
+  return (
+    <Screen>
+      <AppText variant="headline">{t('tools.title')}</AppText>
+      <View style={styles.list}>
+        {available.map((item) => (
+          <Pressable
+            key={item.title}
             accessibilityRole="button"
-            accessibilityLabel={tool.title}
+            onPress={item.onPress}
+            style={({ pressed }) => [
+              styles.card,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              pressed && { opacity: 0.8 },
+            ]}
           >
-            <View
-              style={[
-                styles.toolIconBox,
-                { backgroundColor: colors.accent + '14' },
-              ]}
-            >
-              <Ionicons name={tool.icon} size={22} color={colors.accent} />
+            <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
+              <Icon name={item.icon} tone="primary" />
             </View>
-            <Text style={[styles.toolTitle, { color: colors.textPrimary }]}>
-              {tool.title}
-            </Text>
-            <Text
-              style={[styles.toolDescription, { color: colors.textSecondary }]}
-              numberOfLines={3}
-            >
-              {tool.description}
-            </Text>
-            <Text style={[styles.toolStage, { color: colors.textMuted }]}>
-              {tool.stage}
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.flex}>
+              <AppText variant="bodyStrong">{item.title}</AppText>
+              <AppText variant="caption" tone="muted">
+                {item.body}
+              </AppText>
+            </View>
+            <Icon name="chevron-right" tone="muted" directional />
+          </Pressable>
         ))}
       </View>
-    </ScreenContainer>
+
+      <View style={styles.list}>
+        <AppText variant="caption" tone="muted">
+          {t('tools.comingSoon')}
+        </AppText>
+        {upcoming.map((item) => (
+          <View
+            key={item.title}
+            style={[styles.card, styles.disabled, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            accessibilityState={{ disabled: true }}
+          >
+            <View style={[styles.iconWrap, { backgroundColor: colors.surfaceAlt }]}>
+              <Icon name={item.icon} tone="muted" />
+            </View>
+            <AppText style={styles.flex} tone="muted">
+              {item.title}
+            </AppText>
+            <AppText variant="caption" tone="muted">
+              {t('common.soon')}
+            </AppText>
+          </View>
+        ))}
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: {
-    ...TYPOGRAPHY.h1,
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.caption,
-    marginBottom: SPACING.xl,
-  },
-  grid: {
+  list: { gap: spacing.sm },
+  card: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-  },
-  toolCard: {
-    width: '47%',
-    borderRadius: RADIUS.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: SPACING.lg,
-    minHeight: 160,
-  },
-  toolIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: RADIUS.md,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.card,
+    borderWidth: 1,
   },
-  toolTitle: {
-    ...TYPOGRAPHY.bodyBold,
-    marginBottom: SPACING.xs,
-  },
-  toolDescription: {
-    ...TYPOGRAPHY.caption,
-    flex: 1,
-  },
-  toolStage: {
-    ...TYPOGRAPHY.label,
-    marginTop: SPACING.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
+  disabled: { opacity: 0.6 },
+  iconWrap: { width: 40, height: 40, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center' },
+  flex: { flex: 1 },
 });

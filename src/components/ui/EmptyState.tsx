@@ -1,83 +1,25 @@
-// src/components/ui/EmptyState.tsx
+import { StyleSheet, View } from 'react-native';
+import { AppText } from './AppText';
+import { FodxMark } from './FodxMark';
+import { useTheme } from '@/theme/ThemeProvider';
+import { spacing } from '@/theme/tokens';
 
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
-import { useTheme } from '../../hooks/useTheme';
-
-interface EmptyStateProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}
-
-export function EmptyState({
-  icon,
-  title,
-  description,
-  actionLabel,
-  onAction,
-}: EmptyStateProps) {
+export function EmptyState({ title, body }: { title: string; body: string }) {
   const { colors } = useTheme();
-
   return (
-    <View style={styles.container}>
-      <View
-        style={[
-          styles.iconCircle,
-          { backgroundColor: colors.surfaceElevated },
-        ]}
-      >
-        <Ionicons name={icon} size={36} color={colors.accent} />
-      </View>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
+    <View style={styles.wrap}>
+      <FodxMark size={56} frame={colors.border} accent={colors.textMuted} />
+      <AppText variant="title" style={styles.center}>
         {title}
-      </Text>
-      <Text style={[styles.description, { color: colors.textSecondary }]}>
-        {description}
-      </Text>
-      {actionLabel && onAction ? (
-        <Text
-          onPress={onAction}
-          style={[styles.action, { color: colors.accent }]}
-        >
-          {actionLabel}
-        </Text>
-      ) : null}
+      </AppText>
+      <AppText tone="muted" style={styles.center}>
+        {body}
+      </AppText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.xxxl,
-    paddingHorizontal: SPACING.xl,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: RADIUS.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.lg,
-  },
-  title: {
-    ...TYPOGRAPHY.h3,
-    textAlign: 'center',
-    marginBottom: SPACING.sm,
-  },
-  description: {
-    ...TYPOGRAPHY.body,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  action: {
-    ...TYPOGRAPHY.bodyBold,
-    marginTop: SPACING.lg,
-  },
+  wrap: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl, paddingHorizontal: spacing.xl },
+  center: { textAlign: 'center' },
 });

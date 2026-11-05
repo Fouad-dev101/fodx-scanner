@@ -1,281 +1,149 @@
-// src/app/(tabs)/settings.tsx
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { I18nManager } from 'react-native';
+import Constants from 'expo-constants';
+import { reloadAppAsync } from 'expo';
+import { useTranslation } from 'react-i18next';
+import { AppText } from '@/components/ui/AppText';
+import { Button } from '@/components/ui/Button';
+import { FodxMark } from '@/components/ui/FodxMark';
+import { Icon } from '@/components/ui/Icon';
+import { Screen } from '@/components/ui/Screen';
+import { LANGUAGES, initI18n, isRtl, type LanguageCode } from '@/localization';
+import { clearTemporaryFiles } from '@/services/filesystem/storage';
+import { useLibraryStore } from '@/store/libraryStore';
+import { useSettingsStore, type ThemePreference } from '@/store/settingsStore';
+import { useTheme } from '@/theme/ThemeProvider';
+import { radius, spacing } from '@/theme/tokens';
+import { formatBytes } from '@/utils/format';
 
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer } from '../../components/ui/ScreenContainer';
-import { Card } from '../../components/ui/Card';
-import { RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
-import { useTheme } from '../../hooks/useTheme';
-import { useSettingsStore } from '../../store/settingsStore';
-import type { AppLanguage, ThemeMode } from '../../types';
-
-const THEME_OPTIONS: { key: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'light', label: 'Light', icon: 'sunny-outline' },
-  { key: 'dark', label: 'Dark', icon: 'moon-outline' },
-  { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
-];
-
-const LANGUAGE_OPTIONS: { key: AppLanguage; label: string }[] = [
-  { key: 'en', label: 'English' },
-  { key: 'fr', label: 'Français' },
-  { key: 'ar', label: 'العربية' },
+const THEMES: { key: ThemePreference; label: string }[] = [
+  { key: 'system', label: 'settings.themeSystem' },
+  { key: 'light', label: 'settings.themeLight' },
+  { key: 'dark', label: 'settings.themeDark' },
 ];
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
-  const themeMode = useSettingsStore((s) => s.themeMode);
-  const language = useSettingsStore((s) => s.language);
-  const setThemeMode = useSettingsStore((s) => s.setThemeMode);
-  const setLanguage = useSettingsStore((s) => s.setLanguage);
+  const { t, i18n } = useTranslation();
+  const { theme, language, setTheme, setLanguage } = useSettingsStore();
+  const storageBytes = useLibraryStore((s) => s.stats.storageBytes);
+
+  const changeLanguage = async (code: LanguageCode) => {
+    if (code === language) return;
+    await setLanguage(code);
+    if (I18nManager.isRTL !== isRtl(code)) {
+      // Direction changes only apply after a restart.
+      I18nManager.allowRTL(true);
+      I18nManager.forceRTL(isRtl(code));
+      Alert.alert(t('settings.language'), t('settings.languageRestart'), [
+        { text: t('common.done'), onPress: () => reloadAppAsync() },
+      ]);
+      return;
+    }
+    await initI18n(code);
+  };
+
+  const clearTemp = () => {
+    clearTemporaryFiles();
+    Alert.alert(t('settings.clearTemp'), t('settings.clearTempDone'));
+  };
 
   return (
-    <ScreenContainer>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>Settings</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Preferences for FODX Scanner. Your documents never leave this device.
-      </Text>
+    <Screen>
+      <AppText variant="headline">{t('settings.title')}</AppText>
 
-      {/* Appearance */}
-      <Text style={[styles.section, { color: colors.textPrimary }]}>
-        Appearance
-      </Text>
-      <Card>
-        <View style={styles.rowBetween}>
-          <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>
-            Theme
-          </Text>
-          <View style={styles.segmented}>
-            {THEME_OPTIONS.map((option) => {
-              const active = themeMode === option.key;
-              return (
-                <TouchableOpacity
-                  key={option.key}
-                  onPress={() => setThemeMode(option.key)}
-                  style={[
-                    styles.segment,
-                    {
-                      backgroundColor: active ? colors.accent : 'transparent',
-                    },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                >
-                  <Ionicons
-                    name={option.icon}
-                    size={16}
-                    color={active ? '#FFFFFF' : colors.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.segmentLabel,
-                      { color: active ? '#FFFFFF' : colors.textSecondary },
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </Card>
-
-      {/* Language */}
-      <Text style={[styles.section, { color: colors.textPrimary }]}>
-        Language
-      </Text>
-      <Card>
-        <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>
-          Interface language
-        </Text>
-        <Text style={[styles.helper, { color: colors.textSecondary }]}>
-          Arabic interface support (RTL) is prepared for a future stage. Selecting
-          Arabic now stores the preference.
-        </Text>
-        <View style={styles.languageRow}>
-          {LANGUAGE_OPTIONS.map((option) => {
-            const active = language === option.key;
+      <Section title={t('settings.appearance')}>
+        <AppText variant="caption" tone="muted">
+          {t('settings.theme')}
+        </AppText>
+        <View style={styles.segment}>
+          {THEMES.map((item) => {
+            const selected = item.key === theme;
             return (
-              <TouchableOpacity
-                key={option.key}
-                onPress={() => setLanguage(option.key)}
+              <Pressable
+                key={item.key}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => setTheme(item.key)}
                 style={[
-                  styles.languageChip,
-                  {
-                    borderColor: active ? colors.accent : colors.border,
-                    backgroundColor: active ? colors.accent + '14' : 'transparent',
-                  },
+                  styles.segmentItem,
+                  { backgroundColor: selected ? colors.primary : colors.surfaceAlt },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.languageLabel,
-                    { color: active ? colors.accent : colors.textSecondary },
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
+                <AppText variant="bodyStrong" tone={selected ? 'onPrimary' : 'text'}>
+                  {t(item.label)}
+                </AppText>
+              </Pressable>
             );
           })}
         </View>
-      </Card>
+      </Section>
 
-      {/* Storage */}
-      <Text style={[styles.section, { color: colors.textPrimary }]}>
-        Storage
-      </Text>
-      <Card>
-        <SettingRow icon="server-outline" label="Documents on device" value="0 files" />
-        <Divider />
-        <SettingRow icon="archive-outline" label="Space used" value="0 B" />
-        <Divider />
-        <SettingRow
-          icon="trash-outline"
-          label="Clear temporary files"
-          value="Coming in Stage 7"
-        />
-      </Card>
+      <Section title={t('settings.language')}>
+        {LANGUAGES.map((lang) => (
+          <Pressable
+            key={lang.code}
+            accessibilityRole="button"
+            accessibilityState={{ selected: lang.code === language }}
+            onPress={() => changeLanguage(lang.code)}
+            style={styles.langRow}
+          >
+            <AppText style={styles.flex}>{lang.label}</AppText>
+            {lang.code === language ? <Icon name="check" tone="primary" /> : null}
+          </Pressable>
+        ))}
+      </Section>
 
-      {/* Privacy & About */}
-      <Text style={[styles.section, { color: colors.textPrimary }]}>
-        Privacy & About
-      </Text>
-      <Card>
-        <SettingRow
-          icon="shield-checkmark-outline"
-          label="Privacy"
-          value="100% on-device"
-        />
-        <Divider />
-        <SettingRow icon="information-circle-outline" label="Version" value="1.0.0" />
-        <Divider />
-        <SettingRow
-          icon="sparkles-outline"
-          label="Tagline"
-          value="Scan. Organize. Simplify."
-        />
-      </Card>
+      <Section title={t('settings.storage')}>
+        <View style={styles.langRow}>
+          <AppText style={styles.flex}>{t('settings.storageUsed')}</AppText>
+          <AppText tone="muted">{formatBytes(storageBytes, i18n.language)}</AppText>
+        </View>
+        <Button label={t('settings.clearTemp')} variant="secondary" icon="trash" onPress={clearTemp} />
+      </Section>
 
-      <Text style={[styles.footer, { color: colors.textMuted }]}>
-        FODX Scanner · Built with privacy in mind
-      </Text>
-    </ScreenContainer>
+      <Section title={t('settings.privacy')}>
+        <AppText tone="muted">{t('settings.privacyBody')}</AppText>
+      </Section>
+
+      <Section title={t('settings.about')}>
+        <View style={styles.about}>
+          <FodxMark size={40} frame={colors.text} accent={colors.primary} />
+          <View style={styles.flex}>
+            <AppText variant="bodyStrong">FODX Scanner</AppText>
+            <AppText variant="caption" tone="muted">
+              {t('settings.version')} {Constants.expoConfig?.version ?? '1.0.0'}
+            </AppText>
+          </View>
+        </View>
+        <AppText tone="muted">{t('settings.aboutBody')}</AppText>
+      </Section>
+    </Screen>
   );
 }
 
-function SettingRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const { colors } = useTheme();
   return (
-    <View style={styles.settingRow}>
-      <View style={styles.settingLeft}>
-        <Ionicons name={icon} size={18} color={colors.accent} />
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {label}
-        </Text>
-      </View>
-      <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-        {value}
-      </Text>
+    <View style={styles.section}>
+      <AppText variant="title">{title}</AppText>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>{children}</View>
     </View>
   );
 }
 
-function Divider() {
-  const { colors } = useTheme();
-  return (
-    <View style={[styles.divider, { backgroundColor: colors.border }]} />
-  );
-}
-
 const styles = StyleSheet.create({
-  title: {
-    ...TYPOGRAPHY.h1,
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.caption,
-    marginBottom: SPACING.xl,
-  },
-  section: {
-    ...TYPOGRAPHY.bodyBold,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.sm,
-  },
-  rowBetween: {
-    flexDirection: 'row',
+  flex: { flex: 1 },
+  section: { gap: spacing.sm },
+  card: { borderRadius: radius.card, borderWidth: 1, padding: spacing.lg, gap: spacing.md },
+  segment: { flexDirection: 'row', gap: spacing.sm },
+  segmentItem: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: radius.control,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
-  rowLabel: {
-    ...TYPOGRAPHY.bodyMedium,
-  },
-  helper: {
-    ...TYPOGRAPHY.caption,
-    marginTop: SPACING.xs,
-    marginBottom: SPACING.md,
-  },
-  segmented: {
-    flexDirection: 'row',
-    gap: SPACING.xs,
-  },
-  segment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.sm,
-  },
-  segmentLabel: {
-    ...TYPOGRAPHY.label,
-    marginLeft: 4,
-  },
-  languageRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    flexWrap: 'wrap',
-  },
-  languageChip: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.full,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  languageLabel: {
-    ...TYPOGRAPHY.captionMedium,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.md,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingLabel: {
-    ...TYPOGRAPHY.bodyMedium,
-    marginLeft: SPACING.md,
-  },
-  settingValue: {
-    ...TYPOGRAPHY.caption,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-  },
-  footer: {
-    ...TYPOGRAPHY.caption,
-    textAlign: 'center',
-    marginTop: SPACING.xxxl,
-  },
+  langRow: { flexDirection: 'row', alignItems: 'center', minHeight: 40, gap: spacing.md },
+  about: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 });

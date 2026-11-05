@@ -14,43 +14,24 @@
       "backgroundColor": "#0B1D3A"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.fodx.scanner"
     },
     "android": {
+      "package": "com.fodx.scanner",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0B1D3A"
-      },
-      "package": "com.fodx.scanner"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      }
     },
     "plugins": [
       "expo-router",
+      "expo-localization",
       [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow FODX Scanner to access your camera to scan documents."
-        }
-      ],
-      "react-native-document-scanner-plugin",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "compileSdkVersion": 35,
-            "targetSdkVersion": 35,
-            "buildToolsVersion": "35.0.0"
-          }
-        }
+        "react-native-document-scanner-plugin",
+        { "cameraPermission": "FODX Scanner uses the camera to scan your documents. Scans stay on your device." }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true
-    }
+    "experiments": { "typedRoutes": true }
   }
 }

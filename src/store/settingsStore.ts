@@ -1,30 +1,43 @@
-// src/store/settingsStore.ts
-
 import { create } from 'zustand';
-import type { AppLanguage, ThemeMode } from '../types';
+import { documentsRepository } from '@/database/documentsRepository';
+import type { LanguageCode } from '@/localization';
+
+export type ThemePreference = 'system' | 'light' | 'dark';
 
 interface SettingsState {
-  themeMode: ThemeMode;
-  language: AppLanguage;
-  isHydrated: boolean;
-
-  setThemeMode: (mode: ThemeMode) => void;
-  setLanguage: (lang: AppLanguage) => void;
-  setHydrated: (hydrated: boolean) => void;
+  ready: boolean;
+  theme: ThemePreference;
+  language: LanguageCode;
+  load: () => Promise<void>;
+  setTheme: (theme: ThemePreference) => Promise<void>;
+  setLanguage: (language: LanguageCode) => Promise<void>;
 }
 
-/**
- * Stage 1 store: in-memory only.
- * Stage 4 will add persistence via expo-sqlite (SETTINGS table).
- * We deliberately avoid AsyncStorage here because the spec requires SQLite
- * as the single source of truth.
- */
-export const useSettingsStore = create<SettingsState>((set) => ({
-  themeMode: 'system',
-  language: 'en',
-  isHydrated: false,
+const isTheme = (v: string | null): v is ThemePreference =>
+  v === 'system' || v === 'light' || v === 'dark';
+const isLanguage = (v: string | null): v is LanguageCode => v === 'en' || v === 'fr' || v === 'ar';
 
-  setThemeMode: (themeMode) => set({ themeMode }),
-  setLanguage: (language) => set({ language }),
-  setHydrated: (isHydrated) => set({ isHydrated }),
+export const useSettingsStore = create<SettingsState>((set) => ({
+  ready: false,
+  theme: 'system',
+  language: 'en',
+  async load() {
+    const [theme, language] = await Promise.all([
+      documentsRepository.getSetting('theme'),
+      documentsRepository.getSetting('language'),
+    ]);
+    set({
+      ready: true,
+      theme: isTheme(theme) ? theme : 'system',
+      language: isLanguage(language) ? language : 'en',
+    });
+  },
+  async setTheme(theme) {
+    set({ theme });
+    await documentsRepository.setSetting('theme', theme);
+  },
+  async setLanguage(language) {
+    set({ language });
+    await documentsRepository.setSetting('language', language);
+  },
 }));

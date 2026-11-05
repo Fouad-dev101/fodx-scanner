@@ -1,247 +1,178 @@
-// src/app/(tabs)/index.tsx
-
-import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { ScreenContainer } from '../../components/ui/ScreenContainer';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { RADIUS, SPACING, TYPOGRAPHY } from '../../constants/theme';
-import { useTheme } from '../../hooks/useTheme';
-import { formatBytes, getGreeting } from '../../utils/format';
-
-const QUICK_ACTIONS: {
-  id: string;
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  route: string;
-}[] = [
-  { id: 'pdf', label: 'Import PDF', icon: 'document-outline', route: '/tools' },
-  { id: 'image', label: 'Import Image', icon: 'image-outline', route: '/tools' },
-  { id: 'create', label: 'Create PDF', icon: 'add-circle-outline', route: '/tools' },
-  { id: 'ocr', label: 'Extract Text', icon: 'text-outline', route: '/tools' },
-];
+import { useCallback } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import Svg, { Path } from 'react-native-svg';
+import { DocumentRow } from '@/components/documents/DocumentRow';
+import { AppText } from '@/components/ui/AppText';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FodxMark } from '@/components/ui/FodxMark';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { Screen } from '@/components/ui/Screen';
+import { importImage, importPdf, imagesToPdf } from '@/features/documents/importActions';
+import { useScanFlow } from '@/features/scanner/useScanFlow';
+import { useLibraryStore } from '@/store/libraryStore';
+import { useTheme } from '@/theme/ThemeProvider';
+import { palette, radius, spacing } from '@/theme/tokens';
+import { defaultScanDate, formatBytes } from '@/utils/format';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
+  const scan = useScanFlow();
+  const { documents, stats, refresh } = useLibraryStore();
 
-  const handleScan = () => {
-    router.push('/scanner');
+  useFocusEffect(
+    useCallback(() => {
+      refresh().catch(() => {});
+    }, [refresh]),
+  );
+
+  const open = (id: string | null) => {
+    if (id) router.push(`/document/${id}`);
   };
 
+  const quick: { icon: IconName; label: string; onPress?: () => void }[] = [
+    { icon: 'file-plus', label: t('home.importPdf'), onPress: async () => open(await importPdf(t)) },
+    { icon: 'image', label: t('home.importImage'), onPress: async () => open(await importImage(t)) },
+    {
+      icon: 'layers',
+      label: t('home.createPdf'),
+      onPress: async () => open(await imagesToPdf(t, t('scan.defaultName', { date: defaultScanDate(i18n.language) }))),
+    },
+    { icon: 'type', label: t('home.extractText') },
+  ];
+
   return (
-    <ScreenContainer>
-      {/* Header */}
-      <View style={styles.headerRow}>
+    <Screen>
+      <View style={styles.header}>
+        <FodxMark size={34} frame={colors.text} accent={colors.primary} />
         <View>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-            {getGreeting()}
-          </Text>
-          <Text style={[styles.brand, { color: colors.textPrimary }]}>
-            FODX Scanner
-          </Text>
+          <AppText variant="title">FODX Scanner</AppText>
+          <AppText variant="caption" tone="muted">
+            {t('home.tagline')}
+          </AppText>
         </View>
-        <TouchableOpacity
-          style={[
-            styles.profileCircle,
-            { backgroundColor: colors.surfaceElevated },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Open settings"
-          onPress={() => router.push('/(tabs)/settings')}
-        >
-          <Ionicons name="person" size={20} color={colors.accent} />
-        </TouchableOpacity>
       </View>
 
-      {/* Primary scan CTA */}
-      <Card style={styles.scanCard}>
-        <View style={styles.scanCardTop}>
-          <View
-            style={[styles.scanIconBox, { backgroundColor: colors.accent + '18' }]}
-          >
-            <Ionicons name="scan" size={28} color={colors.accent} />
-          </View>
-          <Text style={[styles.scanTitle, { color: colors.textPrimary }]}>
-            Scan a document
-          </Text>
-          <Text style={[styles.scanSubtitle, { color: colors.textSecondary }]}>
-            Point your camera at any paper document. We will handle the rest.
-          </Text>
+      <View style={[styles.hero, { backgroundColor: colors.brand }]}>
+        <View style={styles.heroFrame} pointerEvents="none">
+          <Svg width={150} height={150} viewBox="0 0 150 150" fill="none">
+            <Path
+              d="M10 50V22a12 12 0 0 1 12-12h28M100 10h28a12 12 0 0 1 12 12v28M140 100v28a12 12 0 0 1-12 12h-28M50 140H22a12 12 0 0 1-12-12v-28"
+              stroke={palette.blue400}
+              strokeWidth={5}
+              strokeLinecap="round"
+              strokeOpacity={0.55}
+            />
+          </Svg>
         </View>
-        <Button label="Scan Document" onPress={handleScan} />
-      </Card>
-
-      {/* Quick actions */}
-      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-        Quick actions
-      </Text>
-      <View style={styles.quickGrid}>
-        {QUICK_ACTIONS.map((action) => (
-          <TouchableOpacity
-            key={action.id}
-            style={[
-              styles.quickItem,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            onPress={() => router.push(action.route as never)}
-            accessibilityRole="button"
-            accessibilityLabel={action.label}
-          >
-            <Ionicons name={action.icon} size={22} color={colors.accent} />
-            <Text
-              style={[styles.quickLabel, { color: colors.textPrimary }]}
-              numberOfLines={2}
-            >
-              {action.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <AppText variant="headline" tone="onBrand">
+          {t('home.heroTitle')}
+        </AppText>
+        <AppText tone="onBrand" style={styles.heroBody}>
+          {t('home.heroBody')}
+        </AppText>
+        <Button label={t('home.scan')} icon="maximize" onPress={() => scan()} />
       </View>
 
-      {/* Stats */}
-      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-        Your library
-      </Text>
-      <View style={styles.statsRow}>
-        <StatCard icon="documents-outline" value="0" label="Documents" />
-        <StatCard icon="document-text-outline" value="0" label="PDFs" />
-        <StatCard icon="server-outline" value={formatBytes(0)} label="Storage" />
+      <View style={styles.section}>
+        <AppText variant="title">{t('home.quick')}</AppText>
+        <View style={styles.quickRow}>
+          {quick.map((q) => {
+            const disabled = !q.onPress;
+            return (
+              <Pressable
+                key={q.label}
+                disabled={disabled}
+                accessibilityRole="button"
+                accessibilityState={{ disabled }}
+                onPress={q.onPress}
+                style={({ pressed }) => [
+                  styles.quick,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  disabled && { opacity: 0.55 },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <Icon name={q.icon} tone="primary" />
+                <AppText variant="caption" style={styles.quickLabel} numberOfLines={2}>
+                  {q.label}
+                </AppText>
+                {disabled ? (
+                  <AppText variant="caption" tone="muted">
+                    {t('common.soon')}
+                  </AppText>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
-      {/* Recent documents / empty state */}
-      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-        Recent documents
-      </Text>
-      <Card noPadding>
-        <EmptyState
-          icon="document-text-outline"
-          title="No documents yet"
-          description="Scan a paper document or import a PDF to get started. Everything stays on your device."
-          actionLabel="Scan your first document"
-          onAction={handleScan}
-        />
-      </Card>
-    </ScreenContainer>
+      <View style={[styles.stats, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Stat value={String(stats.totalDocuments)} label={t('home.statDocs')} />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <Stat value={String(stats.totalPdfs)} label={t('home.statPdfs')} />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <Stat value={formatBytes(stats.storageBytes, i18n.language)} label={t('home.statStorage')} />
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <AppText variant="title">{t('home.recent')}</AppText>
+          {documents.length > 0 ? (
+            <Pressable onPress={() => router.push('/documents')} hitSlop={10}>
+              <AppText tone="primary" variant="bodyStrong">
+                {t('home.seeAll')}
+              </AppText>
+            </Pressable>
+          ) : null}
+        </View>
+        {documents.length === 0 ? (
+          <EmptyState title={t('home.emptyTitle')} body={t('home.emptyBody')} />
+        ) : (
+          documents.slice(0, 5).map((doc) => (
+            <DocumentRow key={doc.id} doc={doc} onPress={() => router.push(`/document/${doc.id}`)} />
+          ))
+        )}
+      </View>
+    </Screen>
   );
 }
 
-function StatCard({
-  icon,
-  value,
-  label,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  value: string;
-  label: string;
-}) {
-  const { colors } = useTheme();
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <View
-      style={[
-        styles.statCard,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-      ]}
-    >
-      <Ionicons name={icon} size={18} color={colors.accent} />
-      <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-        {value}
-      </Text>
-      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+    <View style={styles.stat}>
+      <AppText variant="stat">{value}</AppText>
+      <AppText variant="caption" tone="muted">
         {label}
-      </Text>
+      </AppText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  greeting: {
-    ...TYPOGRAPHY.caption,
-  },
-  brand: {
-    ...TYPOGRAPHY.h2,
-    marginTop: 2,
-  },
-  profileCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scanCard: {
-    marginBottom: SPACING.xl,
-  },
-  scanCardTop: {
-    marginBottom: SPACING.lg,
-  },
-  scanIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
-  },
-  scanTitle: {
-    ...TYPOGRAPHY.h3,
-    marginBottom: SPACING.xs,
-  },
-  scanSubtitle: {
-    ...TYPOGRAPHY.caption,
-    lineHeight: 20,
-  },
-  sectionTitle: {
-    ...TYPOGRAPHY.bodyBold,
-    marginBottom: SPACING.md,
-    marginTop: SPACING.sm,
-  },
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  quickItem: {
-    width: '47%',
-    borderRadius: RADIUS.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: SPACING.lg,
-    alignItems: 'flex-start',
-  },
-  quickLabel: {
-    ...TYPOGRAPHY.captionMedium,
-    marginTop: SPACING.sm,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  statCard: {
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  hero: { borderRadius: radius.hero, padding: spacing.xl, gap: spacing.md, overflow: 'hidden' },
+  heroFrame: { position: 'absolute', top: -14, end: -14, opacity: 0.9 },
+  heroBody: { opacity: 0.8, maxWidth: '78%', marginBottom: spacing.sm },
+  section: { gap: spacing.md },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  quickRow: { flexDirection: 'row', gap: spacing.sm },
+  quick: {
     flex: 1,
-    borderRadius: RADIUS.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: SPACING.md,
+    minHeight: 92,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    padding: spacing.md,
+    gap: spacing.sm,
     alignItems: 'flex-start',
   },
-  statValue: {
-    ...TYPOGRAPHY.h3,
-    marginTop: SPACING.sm,
-  },
-  statLabel: {
-    ...TYPOGRAPHY.label,
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
+  quickLabel: { flexShrink: 1 },
+  stats: { flexDirection: 'row', borderRadius: radius.card, borderWidth: 1, paddingVertical: spacing.lg },
+  stat: { flex: 1, alignItems: 'center', gap: 2 },
+  divider: { width: 1 },
 });

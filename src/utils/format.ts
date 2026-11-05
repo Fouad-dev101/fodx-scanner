@@ -1,41 +1,42 @@
-// src/utils/format.ts
-
-/**
- * Formats bytes into a human-readable string.
- * Examples: 0 B, 512 B, 2.4 KB, 18.7 MB.
- */
-export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
-
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const index = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-    units.length - 1,
-  );
-  const value = bytes / Math.pow(1024, index);
-
-  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+export function formatBytes(bytes: number, locale?: string): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  const num = new Intl.NumberFormat(locale, { maximumFractionDigits: value >= 100 ? 0 : 1 }).format(value);
+  return `${num} ${units[i]}`;
 }
 
-/**
- * Formats a Unix timestamp (ms) as a short local date.
- * Example: "30 Oct 2026".
- */
-export function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
+export function formatDate(timestamp: number, locale?: string): string {
+  return new Date(timestamp).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+export function formatDateTime(timestamp: number, locale?: string): string {
+  return new Date(timestamp).toLocaleString(locale, {
     year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
-/**
- * Returns a greeting based on the current hour.
- * Used on the Home dashboard.
- */
-export function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+/** Safe default file/document name for new scans. */
+export function defaultScanDate(locale?: string): string {
+  return new Date().toLocaleString(locale, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** Strips characters that are illegal in file names on common platforms. */
+export function sanitizeName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
 }
